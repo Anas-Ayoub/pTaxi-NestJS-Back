@@ -13,8 +13,175 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Book {
-  id          Int     @id @default(autoincrement())
-  title       String
-  description String?
+model User {
+  user_id          Int      @id @default(autoincrement())
+  firebase_auth_id String   @unique
+  email            String   @unique
+  password_hash    String
+  name             String
+  phone_number     String   @unique
+  user_type        UserType
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  Driver    Driver?
+  Passenger Passenger?
+  Feedback  Feedback[]
+}
+
+model Passenger {
+  passenger_id Int      @id
+  user_id      Int      @unique
+  rating       Float    @default(0.0)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  user        User          @relation(fields: [user_id], references: [user_id])
+  Ride        Ride[]
+  RideRequest RideRequest[]
+}
+
+//user       User       @relation(fields: [driver_id], references: [user_id])
+model Vehicle {
+  vehicle_id    Int      @id @default(autoincrement())
+  driver_id     Int
+  make          String
+  model         String
+  year          Int
+  license_plate String   @unique
+  color         String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  driver Driver?
+}
+
+model Driver {
+  driver_id      Int          @id @default(autoincrement())
+  vehicle_id     Int          @unique
+  license_number String       @unique
+  rating         Float        @default(0.0)
+  status         DriverStatus
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  vehicles Vehicle @relation(fields: [vehicle_id], references: [vehicle_id])
+
+  user User @relation(fields: [user_id], references: [user_id])
+
+  user_id Int    @unique
+  Ride    Ride[]
+}
+
+model Ride {
+  ride_id           Int        @id @default(autoincrement())
+  passenger_id      Int
+  driver_id         Int
+  start_location_id Int
+  end_location_id   Int
+  status            RideStatus
+  start_time        DateTime?
+  end_time          DateTime?
+  fare              Float?
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  passenger     Passenger  @relation(fields: [passenger_id], references: [passenger_id])
+  driver        Driver     @relation(fields: [driver_id], references: [driver_id])
+  startLocation Location   @relation("RideStartLocation", fields: [start_location_id], references: [location_id])
+  endLocation   Location   @relation("RideEndLocation", fields: [end_location_id], references: [location_id])
+  Payment       Payment[]
+  Feedback      Feedback[]
+}
+
+model Payment {
+  payment_id     Int           @id @default(autoincrement())
+  ride_id        Int
+  amount         Float
+  payment_method PaymentMethod
+  payment_status PaymentStatus @default(pending)
+  transaction_id String?       @unique
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  ride Ride @relation(fields: [ride_id], references: [ride_id])
+}
+
+model Feedback {
+  feedback_id Int      @id @default(autoincrement())
+  ride_id     Int
+  user_id     Int
+  rating      Int
+  comment     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  ride Ride @relation(fields: [ride_id], references: [ride_id])
+  user User @relation(fields: [user_id], references: [user_id])
+}
+
+model Location {
+  location_id Int      @id @default(autoincrement())
+  latitude    Float
+  longitude   Float
+  address     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  RideStart        Ride[]        @relation("RideStartLocation")
+  RideEnd          Ride[]        @relation("RideEndLocation")
+  RideRequestStart RideRequest[] @relation("RideRequestStartLocation")
+  RideRequestEnd   RideRequest[] @relation("RideRequestEndLocation")
+}
+
+model RideRequest {
+  request_id        Int           @id @default(autoincrement())
+  passenger_id      Int
+  start_location_id Int
+  end_location_id   Int
+  status            RequestStatus @default(pending)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  passenger     Passenger @relation(fields: [passenger_id], references: [passenger_id])
+  startLocation Location  @relation("RideRequestStartLocation", fields: [start_location_id], references: [location_id])
+  endLocation   Location  @relation("RideRequestEndLocation", fields: [end_location_id], references: [location_id])
+}
+
+enum UserType {
+  driver
+  passenger
+}
+
+enum DriverStatus {
+  available
+  unavailable
+}
+
+enum RideStatus {
+  requested
+  accepted
+  in_progress
+  completed
+  cancelled
+}
+
+enum PaymentMethod {
+  credit_card
+  debit_card
+  cash
+  wallet
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+}
+
+enum RequestStatus {
+  pending
+  accepted
+  rejected
+  cancelled
 }
